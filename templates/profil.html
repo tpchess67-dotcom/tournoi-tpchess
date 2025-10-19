@@ -1,0 +1,59 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<h1 class="text-3xl font-bold mb-2">Profil de <span class="text-custom-blue">{{ current_user.prenom }} {{ current_user.nom }}</span></h1>
+<p class="mb-6 text-gray-600">Nom d'utilisateur : {{ current_user.username }}</p>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="md:col-span-1">
+        <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+            <h2 class="text-lg font-semibold text-gray-600 uppercase">ELO Actuel</h2>
+            <p class="text-6xl font-bold text-custom-blue my-4">{{ current_user.elo }}</p>
+        </div>
+    </div>
+
+    <div class="md:col-span-2">
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-semibold mb-4">Évolution de l'ELO</h2>
+            <canvas id="eloChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('eloChart').getContext('2d');
+        const eloChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: {{ labels | tojson | safe }},
+                datasets: [{
+                    label: 'Classement ELO',
+                    data: {{ data | tojson | safe }},
+                    fill: false,
+                    borderColor: '#022b57',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: 'ELO'
+                        }
+                    },
+                    x: {
+                         title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

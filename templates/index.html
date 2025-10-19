@@ -1,0 +1,162 @@
+{% extends 'layout.html' %}
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold">Tableau de Bord</h1>
+</div>
+
+<script src="//unpkg.com/alpinejs" defer></script>
+
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+    
+    <div class="lg:col-span-3">
+        
+        {% if current_user.is_authenticated and current_user.is_admin %}
+        <div class="bg-white p-6 rounded-lg shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold mb-4 border-b pb-2">Créer un nouveau tournoi</h2>
+            <form action="{{ url_for('creer_tournoi') }}" method="POST">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2">
+                        <label for="nom" class="block text-sm font-medium text-gray-700">Nom du tournoi</label>
+                        <input type="text" name="nom" id="nom" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-custom-blue focus:ring-custom-blue sm:text-sm p-2">
+                    </div>
+                    <div>
+                        <label for="nombre_rondes" class="block text-sm font-medium text-gray-700">Nombre de rondes</label>
+                        <input type="number" name="nombre_rondes" id="nombre_rondes" min="1" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-custom-blue focus:ring-custom-blue sm:text-sm p-2">
+                    </div>
+                </div>
+                <div class="mt-4 text-right">
+                    <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-custom-blue hover:bg-custom-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-custom-blue">
+                        Créer le Tournoi
+                    </button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+        <div x-data="{ tab: 'actifs' }">
+            <div class="border-b border-gray-200 mb-4">
+                <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                    <button @click="tab = 'actifs'"
+                            :class="{ 'border-custom-blue text-custom-blue': tab === 'actifs', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': tab !== 'actifs' }"
+                            class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Tournois Actifs
+                    </button>
+                    <button @click="tab = 'historique'"
+                            :class="{ 'border-custom-blue text-custom-blue': tab === 'historique', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': tab !== 'historique' }"
+                            class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Historique des Tournois
+                    </button>
+                </nav>
+            </div>
+
+            <div x-show="tab === 'actifs'" class="bg-white p-6 rounded-lg shadow-lg">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tournoi</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for tournoi in active_tournois %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ tournoi.nom }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        {% if tournoi.ronde_actuelle == 0 %}Inscriptions ouvertes{% else %}Ronde {{ tournoi.ronde_actuelle }}{% endif %}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                                    {% if current_user.is_authenticated %}
+                                        {% if current_user.is_admin %}
+                                            <a href="{{ url_for('gerer_tournoi', id=tournoi.id) }}" class="text-custom-blue hover:text-custom-blue-dark">Gérer</a>
+                                            <a href="{{ url_for('supprimer_tournoi', id=tournoi.id) }}" class="text-red-600 hover:text-red-900" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce tournoi ?');">Supprimer</a>
+                                        {% else %}
+                                            <a href="{{ url_for('gerer_tournoi', id=tournoi.id) }}" class="text-gray-600 hover:text-gray-900">Voir</a>
+                                            {% if tournoi.ronde_actuelle == 0 %}
+                                                {% if current_user in tournoi.joueurs %}
+                                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-200 text-gray-700">Inscrit</span>
+                                                {% else %}
+                                                    <form action="{{ url_for('rejoindre_tournoi', id=tournoi.id) }}" method="POST" class="inline-block">
+                                                        <button type="submit" class="px-3 py-1 text-sm bg-green-600 text-white rounded-md hover:bg-green-700">Rejoindre</button>
+                                                    </form>
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endif %}
+                                    {% else %}
+                                        <a href="{{ url_for('login') }}" class="text-gray-600 hover:text-gray-900">Se connecter pour voir</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">Aucun tournoi actif pour le moment.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div x-show="tab === 'historique'" class="bg-white p-6 rounded-lg shadow-lg">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tournoi Terminé</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for tournoi in finished_tournois %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ tournoi.nom }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                                    {% if current_user.is_authenticated %}
+                                        <a href="{{ url_for('gerer_tournoi', id=tournoi.id) }}" class="text-gray-600 hover:text-gray-900">Voir</a>
+                                        <a href="{{ url_for('export_pdf', id=tournoi.id) }}" class="px-3 py-1 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700">Télécharger Grille</a>
+                                        {% if current_user.is_admin %}
+                                            <a href="{{ url_for('supprimer_tournoi', id=tournoi.id) }}" class="text-red-600 hover:text-red-900" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce tournoi ?');">Supprimer</a>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="2" class="px-6 py-4 text-center text-gray-500">Aucun tournoi dans l'historique.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="lg:col-span-2">
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-semibold mb-4">Classement Général ELO</h2>
+            <div class="overflow-x-auto max-h-96">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50 sticky top-0">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joueur</th>
+                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">ELO</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for joueur in joueurs_tries %}
+                        <tr>
+                            <td class="px-4 py-3 text-sm text-gray-500">{{ loop.index }}</td>
+                            <td class="px-4 py-3 text-sm font-medium">{{ joueur.prenom }} {{ joueur.nom }}</td>
+                            <td class="px-4 py-3 text-sm font-bold text-right">{{ joueur.elo }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">Aucun joueur dans la base de données.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

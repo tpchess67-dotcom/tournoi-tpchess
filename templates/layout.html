@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tournoi TPCHESS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .bg-custom-blue { background-color: #022b57 !important; }
+        .hover\:bg-custom-blue-dark:hover { background-color: #011f42 !important; }
+        .text-custom-blue { color: #022b57 !important; }
+        .focus\:ring-custom-blue:focus { border-color: #022b57 !important; box-shadow: 0 0 0 3px rgba(2, 43, 87, 0.5) !important; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans">
+    <nav class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <a href="{{ url_for('index') }}">
+                        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo TPCHESS" class="h-16 w-16">
+                    </a>
+                    <a href="{{ url_for('index') }}" class="text-2xl font-bold text-custom-blue">Tournoi TPCHESS</a>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="{{ url_for('index') }}" class="text-gray-600 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Accueil</a>
+                    
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.is_admin %}
+                            <a href="{{ url_for('gerer_joueurs') }}" class="text-gray-600 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Joueurs</a>
+                        {% endif %}
+                        <a href="{{ url_for('profil') }}" class="text-gray-600 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Mon Profil</a>
+                        <a href="{{ url_for('logout') }}" class="text-gray-600 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Déconnexion</a>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="text-gray-600 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Connexion</a>
+                        <a href="{{ url_for('register') }}" class="bg-custom-blue text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-custom-blue-dark">S'inscrire</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="mb-4 px-4 py-3 rounded-lg relative {% if category == 'danger' %} bg-red-100 border border-red-400 text-red-700 {% elif category == 'success' %} bg-green-100 border border-green-400 text-green-700 {% else %} bg-blue-100 border border-blue-400 text-blue-700 {% endif %}" role="alert">
+                    <span>{{ message }}</span>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

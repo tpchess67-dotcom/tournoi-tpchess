@@ -1,0 +1,174 @@
+{% extends 'layout.html' %}
+{% block content %}
+<h1 class="text-3xl font-bold mb-2">Gestion du Tournoi: <span class="text-custom-blue">{{ tournoi.nom }}</span></h1>
+<p class="mb-6 text-gray-600">
+    Statut : 
+    {% if tournoi.termine %} Terminé
+    {% else %} Ronde {{ tournoi.ronde_actuelle }} / {{ tournoi.nombre_rondes }}
+    {% endif %}
+</p>
+{% if current_user.is_admin and not tournoi.termine %}
+<div class="bg-white p-4 rounded-lg shadow-md mb-6 flex items-center justify-between space-x-4">
+    <p class="font-semibold">Actions Admin :</p>
+    {% if tournoi.ronde_actuelle == 0 and tournoi.joueurs|length > 1 %}
+    <a href="{{ url_for('generer_ronde', id=tournoi.id) }}" class="py-2 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700">
+        Générer la Ronde 1
+    </a>
+    {% elif tournoi.ronde_actuelle > 0 and tournoi.ronde_actuelle < tournoi.nombre_rondes %}
+    <a href="{{ url_for('generer_ronde', id=tournoi.id) }}" class="py-2 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700">
+        Générer la Ronde Suivante
+    </a>
+    {% endif %}
+    
+    {% if tournoi.ronde_actuelle > 0 %}
+    <a href="{{ url_for('export_pdf', id=tournoi.id) }}" class="py-2 px-4 bg-gray-600 text-white font-semibold rounded-lg shadow-md hover:bg-gray-700">
+        Exporter Classement (PDF)
+    </a>
+    {% endif %}
+</div>
+{% endif %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="lg:col-span-1 space-y-8">
+        {% if current_user.is_admin and tournoi.ronde_actuelle == 0 %}
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-bold mb-4">Inscrire des Joueurs (Admin)</h2>
+            <form action="{{ url_for('gerer_tournoi', id=tournoi.id) }}" method="POST">
+                <div class="space-y-2 max-h-60 overflow-y-auto">
+                    {% for joueur in tous_les_joueurs %}
+                    <label class="flex items-center space-x-3">
+                        <input type="checkbox" name="joueurs_ids" value="{{ joueur.id }}"
+                            {% if joueur.id in joueurs_inscrits_ids %} checked {% endif %}
+                            class="h-4 w-4 text-custom-blue border-gray-300 rounded focus:ring-custom-blue">
+                        <span>{{ joueur.prenom }} {{ joueur.nom }} ({{ joueur.elo }})</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="mt-4 w-full py-2 px-4 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700">
+                    Valider les inscriptions
+                </button>
+            </form>
+        </div>
+        {% endif %}
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-bold mb-4">Classement Actuel (Participants Actifs)</h2>
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b">
+                        <th class="text-left pb-2">#</th>
+                        <th class="text-left pb-2">Joueur</th>
+                        <th class="text-right pb-2">Score</th>
+                        <th class="text-right pb-2">ELO</th>
+                        {% if current_user.is_admin and not tournoi.termine %}
+                            <th class="text-right pb-2">Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for joueur in joueurs_tries %}
+                    <tr class="border-b {% if joueur.id == current_user.id %} bg-yellow-100 {% endif %}">
+                        <td class="py-2">{{ loop.index }}</td>
+                        <td class="py-2">{{ joueur.prenom }} {{ joueur.nom }}</td>
+                        <td class="py-2 text-right font-bold">{{ scores.get(joueur.id, 0.0) | round(1) }}</td>
+                        <td class="py-2 text-right text-gray-600">{{ joueur.elo }}</td>
+                        {% if current_user.is_admin and not tournoi.termine %}
+                            <td class="py-2 text-right">
+                                <a href="{{ url_for('retirer_joueur', tournoi_id=tournoi.id, joueur_id=joueur.id) }}" 
+                                   class="text-red-600 hover:text-red-900 text-xs" 
+                                   onclick="return confirm('Êtes-vous sûr de vouloir retirer {{ joueur.prenom }} de ce tournoi ? Il/Elle ne sera plus apparié(e).');">
+                                    Retirer
+                                </a>
+                            </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="lg:col-span-2 space-y-6">
+        {% if not matchs_par_ronde %}
+            <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+                <p class="text-gray-500">Aucune ronde n'a encore été générée.</p>
+            </div>
+        {% endif %}
+        {% if current_user.is_admin and tournoi.ronde_actuelle > 0 and not tournoi.termine %}
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-bold mb-4">Ronde {{ tournoi.ronde_actuelle }} - Saisie des résultats</h2>
+            {% set matchs_ronde_actuelle = matchs_par_ronde.get(tournoi.ronde_actuelle, []) %}
+            {% set matchs_a_jouer = [] %}
+            {% for match in matchs_ronde_actuelle %}{% if match.resultat is none and match.joueur2 %}{% set _ = matchs_a_jouer.append(match) %}{% endif %}{% endfor %}
+            {% if matchs_a_jouer %}
+            <form action="{{ url_for('sauver_resultats', id=tournoi.id) }}" method="POST">
+                <div class="space-y-1 mb-4">
+                    <div class="grid grid-cols-12 gap-2 items-center">
+                        <div class="col-span-5 text-right font-semibold text-sm text-gray-600">NOIRS</div>
+                        <div class="col-span-2 text-center font-semibold text-sm text-gray-600">Résultat</div>
+                        <div class="col-span-5 text-left font-semibold text-sm text-gray-600">BLANCS</div>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    {% for match in matchs_a_jouer %}
+                    <div class="grid grid-cols-12 gap-2 items-center">
+                        <div class="col-span-5 text-right font-medium">
+                            {{ match.joueur2.prenom }} {{ match.joueur2.nom }}
+                        </div>
+                        <div class="col-span-2">
+                            <select name="resultat_{{ match.id }}" class="w-full p-1 border-gray-300 rounded-md">
+                                <option value="0.0">0 - 1</option> <option value="0.5" selected>Nul</option>
+                                <option value="1.0">1 - 0</option> </select>
+                        </div>
+                        <div class="col-span-5 text-left font-medium">
+                            {{ match.joueur1.prenom }} {{ match.joueur1.nom }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="mt-6 w-full py-2 px-4 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700">
+                    Terminer la Ronde et Mettre à Jour les ELO
+                </button>
+            </form>
+            {% else %}
+             <div class="text-center p-4 bg-green-100 text-green-800 rounded-md">
+                <p>Tous les résultats de cette ronde ont été saisis.</p>
+             </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% for ronde_num, matchs in matchs_par_ronde|dictsort(reverse=True) %}
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <div class="flex justify-between items-center mb-4">
+                 <h2 class="text-xl font-bold">Résumé Ronde {{ ronde_num }}</h2>
+            </div>
+            <table class="w-full text-sm">
+                 <thead class="border-b">
+                    <tr>
+                        <th class="py-2 text-right w-2/5 font-semibold text-gray-600">Noirs</th>
+                        <th class="py-2 text-center w-1/5 font-semibold text-gray-600">Score</th>
+                        <th class="py-2 text-left w-2/5 font-semibold text-gray-600">Blancs</th>
+                    </tr>
+                 </thead>
+                 <tbody>
+                    {% for match in matchs %}
+                    {% if current_user.is_admin or (match.joueur1_id == current_user.id) or (match.joueur2_id == current_user.id) %}
+                    <tr class="border-b {% if match.joueur1_id == current_user.id or match.joueur2_id == current_user.id %} bg-yellow-100 {% endif %}">
+                        <td class="py-2 text-right w-2/5">
+                            {% if match.joueur2 %}{{ match.joueur2.prenom }} {{ match.joueur2.nom }}{% else %}<i>-- EXEMPT --</i>{% endif %}
+                        </td>
+                        <td class="py-2 text-center w-1/5 font-bold">
+                            {% if match.resultat == 1.0 %} 0 - 1 {% elif match.resultat == 0.0 %} 1 - 0 {% elif match.resultat == 0.5 %} ½ - ½
+                            {% elif match.joueur2 is none %} 0 - 1 (Bye) {% else %} - : -
+                            {% endif %}
+                        </td>
+                        <td class="py-2 text-left w-2/5">
+                             {% if match.joueur1 %}{{ match.joueur1.prenom }} {{ match.joueur1.nom }}{% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
