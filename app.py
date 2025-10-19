@@ -22,8 +22,10 @@ IS_POSTGRES = DATABASE_URL and DATABASE_URL.startswith("postgres")
 # Configuration de la BDD pour déploiement (Supabase/PostgreSQL) ou local (SQLite)
 if IS_POSTGRES:
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    print(f"INFO: Using PostgreSQL database: {app.config['SQLALCHEMY_DATABASE_URI'][:30]}...")
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'instance', 'tournoi.db')
+    print("INFO: Using local SQLite database.")
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # IMPORTANT: Change this secret key for production! Use a long, random string.
